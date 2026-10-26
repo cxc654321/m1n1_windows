@@ -1,0 +1,82 @@
+name: build-m1n1
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/build-m1n1.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: 安装依赖
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu \
+            build-essential python3 python3-pip device-tree-compiler git
+
+      - name: 安装 Rust target
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+          source "$HOME/.cargo/env"
+          rustup target add aarch64-unknown-none-softfloat
+          rustc --version
+
+      - name: 构建 m1n1
+        run: |
+          source "$HOME/.cargo/env"
+          make -j$(nproc)
+          ls -lh build/m1n1.bin build/m1n1.macho
+
+      - name: 打包（m1n1 + proxyclient + 一键脚本）
+        run: |
+          mkdir -p dist
+          cp build/m1n1.bin build/m1n1.macho dist/
+          cat > dist/RUN-UEFI.sh <<'SH'
+          #!/bin/bash
+          # 在【第二台主机】上运行，USB 连接 Mac 后执行
+          # 用法: ./RUN-UEFI.sh <firmware.fd>
+          set -e
+          FW="${1:?用法: ./RUN-UEFI.sh <firmware.fd>}"
+          cd "$(dirname "$0")"
+          python3 -m pip install --quiet construct==2.10.70 pyserial==3.5             || python3 -m pip install --quiet --break-system-packages construct==2.10.70 pyserial==3.5
+          echo "=== 等待 m1n1 USB proxy 设备 ==="
+          for i in $(seq 1 60); do
+            if ls /dev/ttyACM* /dev/cu.usbmodem* 2>/dev/null | head -1 >/dev/null; then break; fi
+            sleep 1
+          done
+          echo "=== 启动 UEFI 固件 ==="
+          python3 proxyclient/tools/run_guest.py -r "$FW" -E 0
+          SH
+          chmod +x dist/RUN-UEFI.sh
+          cp -r proxyclient dist/
+          cp requirements.txt dist/ 2>/dev/null || true
+          cat > dist/README.txt <<'TXT'
+          NT-for-ASi UEFI 固件 — m1n1 hypervisor 启动包
+
+          目标机 (MacBook Air M1):
+            1. 把 m1n1.bin 复制到 ESP 的 /m1n1/boot.bin（覆盖前先备份）
+            2. 重启，长按电源键选 Linux -> m1n1 会进 proxy 模式
+            3. 屏幕应显示 "Running proxy..."
+
+          主机 (这台): 
+            ./RUN-UEFI.sh J313MACBOOKAIRMID2020_EFI.fd
+
+          退出: Ctrl+C
+          TXT
+          ls -lh dist/
+
+      - name: 上传
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1n1-hv-uefi
+          path: dist/
+          retention-days: 30
