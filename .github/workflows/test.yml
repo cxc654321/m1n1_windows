@@ -1,11 +1,8 @@
 name: test
 
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-
+  # push 不再触发，只在 Actions 页面手动运行
+  workflow_dispatch:
 jobs:
   test:
     name: Pytest (${{ matrix.os }} + ${{ matrix.compiler }})

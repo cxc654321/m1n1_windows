@@ -4,19 +4,8 @@ name: release
 
 # Controls when the action will run.
 on:
-  # Triggers the workflow on main branch. Build errors are catched in the
-  # build workflow so failures here are likely caused by the external
-  # sources. No need to run this on pull-requests unless this file is changed.
-  push:
-    branches: [ main, 'releases/**' ]
-    tags: [ 'v*' ]
-  pull_request:
-    branches: [ main ]
-    paths: [ .github/workflows/release.yml ]
-
-  # Allows you to run this workflow manually from the Actions tab
+  # push 不再触发，只在 Actions 页面手动运行
   workflow_dispatch:
-
 jobs:
   release-binaries:
     runs-on: ubuntu-latest
