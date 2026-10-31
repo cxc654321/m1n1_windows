@@ -290,6 +290,8 @@ bool payload_logo(void **custom_128, void **custom_256)
 
 int payload_run(void)
 {
+    printf("\n===== STAGE 10: payload_run entered =====\n");
+    mdelay(4000);
     const char *target = adt_getprop(adt, 0, "target-type", NULL);
     if (target) {
         strcpy(expect_compatible, "apple,");
@@ -308,6 +310,9 @@ int payload_run(void)
 
     while (p)
         p = load_one_payload(p, 0);
+
+    printf("===== STAGE 20: scan done kernel=%p fdt=%p =====\n", kernel, fdt);
+    mdelay(4000);
 
     if (chainload_spec) {
         return chainload_load(chainload_spec, chosen, chosen_cnt);

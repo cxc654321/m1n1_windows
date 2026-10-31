@@ -2996,9 +2996,13 @@ int kboot_boot(void *kernel)
     pcie_init();
     dapf_init_all();
 
+    printf("\n===== STAGE 40: kboot_boot entered =====\n");
+    mdelay(4000);
     printf("Setting SMP mode to WFE...\n");
     smp_set_wfe_mode(true);
     printf("Preparing to boot kernel at %p with fdt at %p\n", kernel, dt);
+    printf("===== STAGE 50: handing off (x0=fdt, x4=boot_args) =====\n");
+    mdelay(6000);
 
     next_stage.entry = kernel;
     next_stage.args[0] = (u64)dt;
