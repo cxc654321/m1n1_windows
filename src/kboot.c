@@ -2840,8 +2840,12 @@ int kboot_prepare_adt(void) {
         int ret = 0;
         //To avoid adding extra ADT nodes we can save carveouts to something unused like cpm-impl-reg
         ret = adt_setprop(adt, node, "cpm-impl-reg", &stack_carveout, sizeof(stack_carveout));
-        if (ret < 0)
+        if (ret < 0) {
             printf("kboot_prepare_adt: failed to add cpu %d carveout\n", cpu_id);
+#ifdef NATIVE_UEFI
+            return -1; // UEFI consumes this reservation without checking its length.
+#endif
+        }
 
 #ifndef NATIVE_UEFI
         adt = adt_el2;//switch global adt address to el2 one because adt_setprop ignores the parameter.
@@ -2970,7 +2974,14 @@ int kboot_prepare_dt(void *fdt)
 
     printf("FDT prepared at %p\n", dt);
 
+#ifdef NATIVE_UEFI
+    if (kboot_prepare_adt() < 0) {
+        printf("Native UEFI: ADT preparation failed; refusing handoff\n");
+        return -1;
+    }
+#else
     kboot_prepare_adt();
+#endif
 
     return 0;
 }
