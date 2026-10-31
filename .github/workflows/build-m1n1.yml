@@ -43,7 +43,7 @@ jobs:
       - name: 构建 m1n1
         run: |
           source "$HOME/.cargo/env"
-          make -j$(nproc) EXTRA_CFLAGS="-DNATIVE_UEFI"
+          make -j$(nproc) EXTRA_CFLAGS="-DNATIVE_UEFI" CHAINLOADING=1
           aarch64-linux-gnu-objdump -d build/kboot.o > build/kboot-disassembly.txt
           ls -lh build/m1n1.bin build/m1n1.macho
 
@@ -61,7 +61,8 @@ jobs:
           cat > dist/README.txt <<'TXT'
           Experimental NATIVE_UEFI build: bypass HV-only ADT alias mappings.
           Both ADT property writes use the original physically backed tree.
-          Built with EXTRA_CFLAGS=-DNATIVE_UEFI; not hardware validated.
+          Built with EXTRA_CFLAGS=-DNATIVE_UEFI CHAINLOADING=1; not hardware validated.
+          CHAINLOADING=1 adds on-device NVMe/GPT/FAT loading via the chainload= variable.
           This artifact is NOT a standalone Windows/UEFI boot solution.
           Hypervisor startup currently depends on an external USB proxy host.
           No UEFI firmware or Windows image is included.
