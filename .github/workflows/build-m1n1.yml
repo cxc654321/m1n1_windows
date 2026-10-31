@@ -43,7 +43,8 @@ jobs:
       - name: 构建 m1n1
         run: |
           source "$HOME/.cargo/env"
-          make -j$(nproc)
+          make -j$(nproc) EXTRA_CFLAGS="-DNATIVE_UEFI"
+          aarch64-linux-gnu-objdump -d build/kboot.o > build/kboot-disassembly.txt
           ls -lh build/m1n1.bin build/m1n1.macho
 
       - name: 校验 Python 语法
@@ -54,11 +55,13 @@ jobs:
           mkdir -p dist
           cp build/m1n1.bin build/m1n1.macho dist/
           cp -r proxyclient dist/
-          cp requirements.txt dist/
+          cp requirements.txt build/kboot-disassembly.txt dist/
           git rev-parse HEAD > dist/COMMIT.txt
           sha256sum dist/m1n1.bin dist/m1n1.macho > dist/SHA256SUMS
           cat > dist/README.txt <<'TXT'
-          m1n1 Windows branch: build baseline only.
+          Experimental NATIVE_UEFI build: bypass HV-only ADT alias mappings.
+          Both ADT property writes use the original physically backed tree.
+          Built with EXTRA_CFLAGS=-DNATIVE_UEFI; not hardware validated.
           This artifact is NOT a standalone Windows/UEFI boot solution.
           Hypervisor startup currently depends on an external USB proxy host.
           No UEFI firmware or Windows image is included.
@@ -70,6 +73,6 @@ jobs:
       - name: 上传
         uses: actions/upload-artifact@v4
         with:
-          name: m1n1-hv-uefi
+          name: m1n1-native-uefi-experimental
           path: dist/
           retention-days: 30

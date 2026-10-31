@@ -2795,6 +2795,9 @@ int kboot_prepare_adt(void) {
         return -1;
     }
 
+    // The EL2 alias is only backed by stage-2 translation under the hypervisor.
+    // A native UEFI boot must keep using the original, physically backed ADT.
+#ifndef NATIVE_UEFI
     u64 aligned_size = ALIGN_UP(cur_boot_args.devtree_size, SZ_16K);
     void *adt_el2 = memalign(SZ_16K, aligned_size);
 
@@ -2808,6 +2811,7 @@ int kboot_prepare_adt(void) {
     mmu_add_mapping(adt_base, (u64)adt_el2, aligned_size, MAIR_IDX_NORMAL_NC, PERM_RW);
 
     void *original_adt = adt;
+#endif
 
     ADT_FOREACH_CHILD(adt, node) {
         u32 cpu_id = 0;
@@ -2839,11 +2843,15 @@ int kboot_prepare_adt(void) {
         if (ret < 0)
             printf("kboot_prepare_adt: failed to add cpu %d carveout\n", cpu_id);
 
+#ifndef NATIVE_UEFI
         adt = adt_el2;//switch global adt address to el2 one because adt_setprop ignores the parameter.
+#endif
         ret = adt_setprop(adt, node, "reg-private", &release_addr, sizeof(release_addr));
         if (ret < 0)
             printf("kboot_prepare_adt: failed to add cpu %d release address\n", cpu_id);
+#ifndef NATIVE_UEFI
         adt = original_adt;//restore to our own adt
+#endif
     }
 
     return 0;
